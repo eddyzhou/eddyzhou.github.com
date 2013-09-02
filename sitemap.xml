@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
+    <url>
+        <loc>http://eddyzhou.github.io/blog/2013/09/01/my-first-octopress-blog/</loc>
+        <lastmod>2013-09-02T21:32:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://eddyzhou.github.io/blog/archives/</loc>
+        <lastmod>2013-09-02T21:32:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://eddyzhou.github.io/</loc>
+        <lastmod>2013-09-02T21:32:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://eddyzhou.github.io/robots.txt</loc>
+        <lastmod>2013-09-01T16:59:11+08:00</lastmod>
+    </url>
+</urlset>

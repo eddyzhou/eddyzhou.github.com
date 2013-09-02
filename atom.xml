@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[EddyZhou's blog]]></title>
+  <link href="http://eddyzhou.github.io/atom.xml" rel="self"/>
+  <link href="http://eddyzhou.github.io/"/>
+  <updated>2013-09-02T22:41:47+08:00</updated>
+  <id>http://eddyzhou.github.io/</id>
+  <author>
+    <name><![CDATA[EddyZhou]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[笑忘人间的苦痛；只有甜美]]></title>
+    <link href="http://eddyzhou.github.io/blog/2013/09/01/my-first-octopress-blog/"/>
+    <updated>2013-09-01T16:59:00+08:00</updated>
+    <id>http://eddyzhou.github.io/blog/2013/09/01/my-first-octopress-blog</id>
+    <content type="html"><![CDATA[<p><img src="http://eddyzhou.github.io/images/self.JPG"></p>
+]]></content>
+  </entry>
+  
+</feed>
