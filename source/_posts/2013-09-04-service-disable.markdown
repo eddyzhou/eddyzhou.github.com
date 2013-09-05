@@ -1,0 +1,23 @@
+---
+layout: post
+title: "功能禁用的一点思考"
+date: 2013-09-04 21:35
+comments: true
+categories: scala macro
+---
+  因为要参加阿里云开发者大赛，而阿里又没有social api可用，最近两天同事在做自己的用户系统(悄悄吐槽一下，明显过度设计了，我原以为一个下午的活做了两三天)，在频繁的改入口，为了少与他代码冲突，我把重构热更新往后推了两天，等他弄完了之后我再改。然后在想可以利用这段时间把功能禁用重新实现下。
+	
+  功能禁用对于游戏来说还是很重要的，比如有玩家反馈某个功能(比如交易)有问题，可以先把这个功能禁用掉，等定位到问题，修复之后重新发布，或者确定没有问题再把这个功能恢复。我们的服务端逻辑是基于Protocol Buffers的RPC暴露接口，每个子系统对应一个Service。之前为了赶进度，用了最简单最容易想到的方式来实现，就是在每一个service加一个functionDisable实例变量，每个接口方法都先判断这个变量是否为true，如果为true就返回给客户端一个该功能已被禁用的应答。这个方案的问题在于这是一种侵入式的做法，需要写一些重复的代码，而且容易写漏。之前确定的一个非侵入式方案是：如果需要禁用一个Service，应该用在外部把注册的Service换成一个用java.lang.reflect.Proxy创建的dummy Service，而不是在每个Service上硬编码禁用的变量。下班前我又想到一个方案，思路跟第一种差不过。
+  定义一个trait，该trait只有一个是否禁用功能的变量:
+    	trait FunctionControl {
+    		var functionDisable = false
+    	}
+  每个Service都extends FunctionControl，然后用宏重新生成Service, 重写每一个接口方法，先判断该功能是否禁用，然后调用现有的逻辑。相当于在每一个方法上加了一层代理，就像下面这样:
+    	def startProxy(controller: RpcController, request: StartRequest) {
+    		if (functionDisable) {
+                calleeController.setFailed(CommonError.FunctionDisable.functionDisable)
+                return
+            }
+            start(controller,request)
+    	}
+  这样就不用写很多重复的代码了。
