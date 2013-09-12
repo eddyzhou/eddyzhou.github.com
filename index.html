@@ -9,7 +9,7 @@
   <meta name="author" content="EddyZhou">
 
   
-  <meta name="description" content="因为要参加阿里云开发者大赛，而阿里又没有social api可用，最近两天同事在做自己的用户系统(悄悄吐槽一下，明显过度设计了，我原以为一个下午的活做了两三天)，在频繁的改入口，为了少与他代码冲突，我把重构热更新往后推了两天，等他弄完了之后我再改。然后在想可以利用这段时间把功能禁用重新实现下。 &hellip;">
+  <meta name="description" content="这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,203 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/09/12/hotswap/">有状态服务器的热更新</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-12T21:47:00+08:00" pubdate data-updated="true">Sep 12<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>  这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启，在停服的时候我把所有的组队数据和刷怪进度保存到了Memcached，重启的时候会先从Memcached读数据，从ProfileServer把玩家数据拉过来，恢复度队伍数据和刷怪进度，这样玩家会感觉到卡一下，但影响不大。现在我们的数据库VinyStorage虽然在架构上是独立的，但是物理上却是与业务逻辑同进程，这导致我们不能常常重启服务器(因为停服的时候VinyStorage把内存的数据写到磁盘可能需要较长时间)。而且我们在内存中维护了很多份房间数据，我们只希望热更新Services，而不去更新Models。所以我们不能用Tomcat等容器那样定时去检测指定目录的Class是否有修改的做法，当然我们是用scala写服务器，Nginx那样fork进程的做法更不可行.</p>
+
+<p>  比较适合我们需求的做法是用正则是去匹配那些类需要热更新，需要热更新的类用自定义的ClassLoader去加载，不需要热更新的类还是用SystemClassLoader去加载。自定义的OverridenClassLoader代码如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>final class OverridenClassLoader(
+</span><span class='line'>  urls: Array[URL],
+</span><span class='line'>  parent: ClassLoader,
+</span><span class='line'>  overridenClasses: Seq[Pattern] = Seq(Pattern.compile(""".*""")),
+</span><span class='line'>  excludeClasses: Seq[Pattern] = Seq.empty,
+</span><span class='line'>  overridenResources: Seq[Pattern] = Seq(Pattern.compile(""".*""")),
+</span><span class='line'>  excludeResources: Seq[Pattern] = Seq.empty) extends URLClassLoader(urls, parent) {
+</span><span class='line'>
+</span><span class='line'>  override final def getResources(name: String) = {
+</span><span class='line'>    if (overridenResources.exists { _.matcher(name).find } &&
+</span><span class='line'>        !excludeResources.exists { _.matcher(name).find }) {
+</span><span class='line'>      findResources(name)
+</span><span class='line'>    } else {
+</span><span class='line'>      super.getResources(name)
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  override final def getResource(name: String): URL = {
+</span><span class='line'>    if (overridenResources.exists { _.matcher(name).find } &&
+</span><span class='line'>        !excludeResources.exists { _.matcher(name).find }) {
+</span><span class='line'>      findResource(name)
+</span><span class='line'>    } else {
+</span><span class='line'>      super.getResource(name)
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  override protected final def loadClass(name: String,
+</span><span class='line'>                                   resolve: Boolean): Class[_] = {
+</span><span class='line'>    if (overridenClasses.exists { _.matcher(name).find } &&
+</span><span class='line'>        !excludeClasses.exists { _.matcher(name).find }) {
+</span><span class='line'>      getClassLoadingLock(name).synchronized {
+</span><span class='line'>        {
+</span><span class='line'>          findLoadedClass(name) match {
+</span><span class='line'>            case null =&gt;
+</span><span class='line'>              findClass(name)
+</span><span class='line'>            case c =&gt; c
+</span><span class='line'>          }
+</span><span class='line'>        } match {
+</span><span class='line'>          case null =&gt;
+</span><span class='line'>            null
+</span><span class='line'>          case c =&gt;
+</span><span class='line'>            if (resolve) {
+</span><span class='line'>              resolveClass(c)
+</span><span class='line'>            }
+</span><span class='line'>            c
+</span><span class='line'>        }
+</span><span class='line'>      }
+</span><span class='line'>    } else {
+</span><span class='line'>      super.loadClass(name, resolve)
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以下是创建OverridenClassLoader的代码:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>val urls = getClass.getClassLoader match {
+</span><span class='line'>  case systemClassLoader if systemClassLoader == ClassLoader.getSystemClassLoader =&gt;
+</span><span class='line'>    val classpath = System.getProperty("java.class.path")
+</span><span class='line'>    classpath.split(File.pathSeparatorChar) map {
+</span><span class='line'>      new File(_).toURI.toURL
+</span><span class='line'>    }
+</span><span class='line'>  case urlClassLoader: URLClassLoader =&gt;
+</span><span class='line'>    urlClassLoader.getURLs
+</span><span class='line'>  case _ =&gt;
+</span><span class='line'>    sys.error("Cannot find current classpath.")
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>new OverridenClassLoader(
+</span><span class='line'>  urls,
+</span><span class='line'>  getClass.getClassLoader,
+</span><span class='line'>  Seq(
+</span><span class='line'>    Pattern.compile("""^com\.dongxiguo\.rftw\.roomServer\.Administer$"""),
+</span><span class='line'>    Pattern.compile("""^com\.dongxiguo\.rftw\.roomServer\.services\."""),
+</span><span class='line'>    Pattern.compile("""^com\.dongxiguo\.rftw\.utils\."""))
+</span><span class='line'>  overridenClasses = ,
+</span><span class='line'>  excludeClasses = Seq.empty,
+</span><span class='line'>  overridenResources = Seq.empty,
+</span><span class='line'>  excludeResources = Seq(Pattern.compile(""".*""")))</span></code></pre></td></tr></table></div></figure>
+
+
+<p>需要注意的是，需要用OverridenClassLoader来加载入口Main，要不然热更新之后旧的service还被main引用回收不掉，会造成内存泄漏，同样需要被卸载的class需要用OverrideClassLoader来加载，因为只有classLoader回收，加载的class才会被卸载。OverridenClassLoader加载类可以引用SystemClassLoader加载的类，但SystemClassLoader加载的类绝不可以引用OverridenClassLoader加载的类。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -170,6 +367,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/09/12/hotswap/">有状态服务器的热更新</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2013/09/04/service-disable/">功能禁用的一点思考</a>

@@ -1,24 +1,97 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[EddyZhou's blog]]></title>
-  <link href="http://eddyzhou.github.io/atom.xml" rel="self"/>
-  <link href="http://eddyzhou.github.io/"/>
-  <updated>2013-09-12T22:58:47+08:00</updated>
-  <id>http://eddyzhou.github.io/</id>
-  <author>
-    <name><![CDATA[EddyZhou]]></name>
-    
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>有状态服务器的热更新 - EddyZhou's blog</title>
+  <meta name="author" content="EddyZhou">
 
   
-  <entry>
-    <title type="html"><![CDATA[有状态服务器的热更新]]></title>
-    <link href="http://eddyzhou.github.io/blog/2013/09/12/hotswap/"/>
-    <updated>2013-09-12T21:47:00+08:00</updated>
-    <id>http://eddyzhou.github.io/blog/2013/09/12/hotswap</id>
-    <content type="html"><![CDATA[<p>  这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启，在停服的时候我把所有的组队数据和刷怪进度保存到了Memcached，重启的时候会先从Memcached读数据，从ProfileServer把玩家数据拉过来，恢复度队伍数据和刷怪进度，这样玩家会感觉到卡一下，但影响不大。现在我们的数据库VinyStorage虽然在架构上是独立的，但是物理上却是与业务逻辑同进程，这导致我们不能常常重启服务器(因为停服的时候VinyStorage把内存的数据写到磁盘可能需要较长时间)。而且我们在内存中维护了很多份房间数据，我们只希望热更新Services，而不去更新Models。所以我们不能用Tomcat等容器那样定时去检测指定目录的Class是否有修改的做法，当然我们是用scala写服务器，Nginx那样fork进程的做法更不可行.</p>
+  <meta name="description" content="这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://eddyzhou.github.io/blog/2013/09/12/hotswap">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="EddyZhou's blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">EddyZhou's blog</a></h1>
+  
+    <h2>我会在这里记录我的生活，希望一切变美好</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:eddyzhou.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">有状态服务器的热更新</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-12T21:47:00+08:00" pubdate data-updated="true">Sep 12<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>  这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启，在停服的时候我把所有的组队数据和刷怪进度保存到了Memcached，重启的时候会先从Memcached读数据，从ProfileServer把玩家数据拉过来，恢复度队伍数据和刷怪进度，这样玩家会感觉到卡一下，但影响不大。现在我们的数据库VinyStorage虽然在架构上是独立的，但是物理上却是与业务逻辑同进程，这导致我们不能常常重启服务器(因为停服的时候VinyStorage把内存的数据写到磁盘可能需要较长时间)。而且我们在内存中维护了很多份房间数据，我们只希望热更新Services，而不去更新Models。所以我们不能用Tomcat等容器那样定时去检测指定目录的Class是否有修改的做法，当然我们是用scala写服务器，Nginx那样fork进程的做法更不可行.</p>
 
 <p>  比较适合我们需求的做法是用正则是去匹配那些类需要热更新，需要热更新的类用自定义的ClassLoader去加载，不需要热更新的类还是用SystemClassLoader去加载。自定义的OverridenClassLoader代码如下：</p>
 
@@ -180,46 +253,156 @@
 
 
 <p>需要注意的是，需要用OverridenClassLoader来加载入口Main，要不然热更新之后旧的service还被main引用回收不掉，会造成内存泄漏，同样需要被卸载的class需要用OverrideClassLoader来加载，因为只有classLoader回收，加载的class才会被卸载。OverridenClassLoader加载类可以引用SystemClassLoader加载的类，但SystemClassLoader加载的类绝不可以引用OverridenClassLoader加载的类。</p>
-]]></content>
-  </entry>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
   
-  <entry>
-    <title type="html"><![CDATA[功能禁用的一点思考]]></title>
-    <link href="http://eddyzhou.github.io/blog/2013/09/04/service-disable/"/>
-    <updated>2013-09-04T21:35:00+08:00</updated>
-    <id>http://eddyzhou.github.io/blog/2013/09/04/service-disable</id>
-    <content type="html"><![CDATA[<p>  因为要参加阿里云开发者大赛，而阿里又没有social api可用，最近两天同事在做自己的用户系统(悄悄吐槽一下，明显过度设计了，我原以为一个下午的活做了两三天)，在频繁的改入口，为了少与他代码冲突，我把重构热更新往后推了两天，等他弄完了之后我再改。然后在想可以利用这段时间把功能禁用重新实现下。</p>
 
-<p>  功能禁用对于游戏来说还是很重要的，比如有玩家反馈某个功能(比如交易)有问题，可以先把这个功能禁用掉，等定位到问题，修复之后重新发布，或者确定没有问题再把这个功能恢复。我们的服务端逻辑是基于Protocol Buffers的RPC暴露接口，每个子系统对应一个Service。之前为了赶进度，用了最简单最容易想到的方式来实现，就是在每一个service加一个functionDisable实例变量，每个接口方法都先判断这个变量是否为true，如果为true就返回给客户端一个该功能已被禁用的应答。这个方案的问题在于这是一种侵入式的做法，需要写一些重复的代码，而且容易写漏。之前确定的一个非侵入式方案是：如果需要禁用一个Service，应该用在外部把注册的Service换成一个用java.lang.reflect.Proxy创建的dummy Service，而不是在每个Service上硬编码禁用的变量。下班前我又想到一个方案，思路跟第一种差不过。
-  定义一个trait，该trait只有一个是否禁用功能的变量:</p>
+<span class="byline author vcard">Posted by <span class="fn">EddyZhou</span></span>
 
-<pre><code>    trait FunctionControl {
-        var functionDisable = false
-    }
-</code></pre>
+      
 
-<p>  每个Service都extends FunctionControl，然后用宏重新生成Service, 重写每一个接口方法，先判断该功能是否禁用，然后调用现有的逻辑。相当于在每一个方法上加了一层代理，就像下面这样:</p>
 
-<pre><code>    def startProxy(controller: RpcController, request: StartRequest) {
-        if (functionDisable) {
-            calleeController.setFailed(CommonError.FunctionDisable.functionDisable)
-            return
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-12T21:47:00+08:00" pubdate data-updated="true">Sep 12<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hotswap/'>hotswap,</a>, <a class='category' href='/blog/categories/scala/'>scala</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://eddyzhou.github.io/blog/2013/09/12/hotswap/" data-via="" data-counturl="http://eddyzhou.github.io/blog/2013/09/12/hotswap/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/09/04/service-disable/" title="Previous Post: 功能禁用的一点思考">&laquo; 功能禁用的一点思考</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/09/12/hotswap/">有状态服务器的热更新</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/09/04/service-disable/">功能禁用的一点思考</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/09/01/my-first-octopress-blog/">笑忘人间的苦痛；只有甜美</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/eddyzhou">@eddyzhou</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
         }
-        start(controller,request)
-    }
-</code></pre>
 
-<p>  这样就不用写很多重复的代码了。</p>
-]]></content>
-  </entry>
+        github.showRepos({
+            user: 'eddyzhou',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/zhouqian1103@gmail.com?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
   
-  <entry>
-    <title type="html"><![CDATA[笑忘人间的苦痛；只有甜美]]></title>
-    <link href="http://eddyzhou.github.io/blog/2013/09/01/my-first-octopress-blog/"/>
-    <updated>2013-09-01T16:59:00+08:00</updated>
-    <id>http://eddyzhou.github.io/blog/2013/09/01/my-first-octopress-blog</id>
-    <content type="html"><![CDATA[<p><img src="http://eddyzhou.github.io/images/self.JPG"></p>
-]]></content>
-  </entry>
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - EddyZhou -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
   
-</feed>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
