@@ -1,0 +1,93 @@
+---
+layout: post
+title: "有状态服务器的热更新"
+date: 2013-09-12 21:47
+comments: true
+categories: hotswap, scala 
+---
+
+  这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启，在停服的时候我把所有的组队数据和刷怪进度保存到了Memcached，重启的时候会先从Memcached读数据，从ProfileServer把玩家数据拉过来，恢复度队伍数据和刷怪进度，这样玩家会感觉到卡一下，但影响不大。现在我们的数据库VinyStorage虽然在架构上是独立的，但是物理上却是与业务逻辑同进程，这导致我们不能常常重启服务器(因为停服的时候VinyStorage把内存的数据写到磁盘可能需要较长时间)。而且我们在内存中维护了很多份房间数据，我们只希望热更新Services，而不去更新Models。所以我们不能用Tomcat等容器那样定时去检测指定目录的Class是否有修改的做法，当然我们是用scala写服务器，Nginx那样fork进程的做法更不可行.
+
+  比较适合我们需求的做法是用正则是去匹配那些类需要热更新，需要热更新的类用自定义的ClassLoader去加载，不需要热更新的类还是用SystemClassLoader去加载。自定义的OverridenClassLoader代码如下：
+```
+final class OverridenClassLoader(
+  urls: Array[URL],
+  parent: ClassLoader,
+  overridenClasses: Seq[Pattern] = Seq(Pattern.compile(""".*""")),
+  excludeClasses: Seq[Pattern] = Seq.empty,
+  overridenResources: Seq[Pattern] = Seq(Pattern.compile(""".*""")),
+  excludeResources: Seq[Pattern] = Seq.empty) extends URLClassLoader(urls, parent) {
+
+  override final def getResources(name: String) = {
+    if (overridenResources.exists { _.matcher(name).find } &&
+        !excludeResources.exists { _.matcher(name).find }) {
+      findResources(name)
+    } else {
+      super.getResources(name)
+    }
+  }
+
+  override final def getResource(name: String): URL = {
+    if (overridenResources.exists { _.matcher(name).find } &&
+        !excludeResources.exists { _.matcher(name).find }) {
+      findResource(name)
+    } else {
+      super.getResource(name)
+    }
+  }
+
+  override protected final def loadClass(name: String,
+                                   resolve: Boolean): Class[_] = {
+    if (overridenClasses.exists { _.matcher(name).find } &&
+        !excludeClasses.exists { _.matcher(name).find }) {
+      getClassLoadingLock(name).synchronized {
+        {
+          findLoadedClass(name) match {
+            case null =>
+              findClass(name)
+            case c => c
+          }
+        } match {
+          case null =>
+            null
+          case c =>
+            if (resolve) {
+              resolveClass(c)
+            }
+            c
+        }
+      }
+    } else {
+      super.loadClass(name, resolve)
+    }
+  }
+}
+
+```
+以下是创建OverridenClassLoader的代码:
+```
+    val urls = getClass.getClassLoader match {
+      case systemClassLoader if systemClassLoader == ClassLoader.getSystemClassLoader =>
+        val classpath = System.getProperty("java.class.path")
+        classpath.split(File.pathSeparatorChar) map {
+          new File(_).toURI.toURL
+        }
+      case urlClassLoader: URLClassLoader =>
+        urlClassLoader.getURLs
+      case _ =>
+        sys.error("Cannot find current classpath.")
+    }
+
+    new OverridenClassLoader(
+      urls,
+      getClass.getClassLoader,
+      Seq(
+        Pattern.compile("""^com\.dongxiguo\.rftw\.roomServer\.Administer$"""),
+        Pattern.compile("""^com\.dongxiguo\.rftw\.roomServer\.services\."""),
+        Pattern.compile("""^com\.dongxiguo\.rftw\.utils\."""))
+      overridenClasses = ,
+      excludeClasses = Seq.empty,
+      overridenResources = Seq.empty,
+      excludeResources = Seq(Pattern.compile(""".*""")))
+```
+需要注意的是，需要用OverridenClassLoader来加载入口Main，要不然热更新之后旧的service还被main引用回收不掉，会造成内存泄漏，同样需要被卸载的class需要用OverrideClassLoader来加载，因为只有classLoader回收，加载的class才会被卸载。OverridenClassLoader加载类可以引用SystemClassLoader加载的类，但SystemClassLoader加载的类绝不可以引用OverridenClassLoader加载的类。
