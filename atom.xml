@@ -4,7 +4,7 @@
   <title><![CDATA[EddyZhou's blog]]></title>
   <link href="http://eddyzhou.github.io/atom.xml" rel="self"/>
   <link href="http://eddyzhou.github.io/"/>
-  <updated>2013-09-24T00:40:16+08:00</updated>
+  <updated>2013-09-24T00:45:36+08:00</updated>
   <id>http://eddyzhou.github.io/</id>
   <author>
     <name><![CDATA[EddyZhou]]></name>
@@ -18,8 +18,9 @@
     <link href="http://eddyzhou.github.io/blog/2013/09/23/rsync/"/>
     <updated>2013-09-23T23:52:00+08:00</updated>
     <id>http://eddyzhou.github.io/blog/2013/09/23/rsync</id>
-    <content type="html"><![CDATA[<p>  上周把服务器和客户端都部署到了阿里云服务器，因为在频繁修改，每天需要发布很多次。客户端做了增量更新，除了第一次上传很慢，之后都很快。服务端是打成了一个jar，有40M左右，每次上传需要半个多小时，慢到实在是不能接受。周四晚上做了一下优化，现在每次上传只需要两三分钟。
-优化的核心思想是增量而不是全量上传，但是打成一个jar之后，rsync还是会全量上传，所以想直接上传class文件，然后在服务器上用jar打包，这样就可以增量上传了。看了下sbt assembly的选项，没看到有选项支持不打成jar。所以先在本地把jar解压:</p>
+    <content type="html"><![CDATA[<p>  上周把服务器和客户端都部署到了阿里云服务器，因为在频繁修改，每天需要发布很多次。客户端做了增量更新，除了第一次上传很慢，之后都很快。服务端是打成了一个jar，有40M左右，每次上传需要半个多小时，慢到实在是不能接受。周四晚上做了一下优化，现在每次上传只需要两三分钟。</p>
+
+<p>优化的核心思想是增量而不是全量上传，但是打成一个jar之后，rsync还是会全量上传，所以想直接上传class文件，然后在服务器上用jar打包，这样就可以增量上传了。看了下sbt assembly的选项，没看到有选项支持不打成jar。所以先在本地把jar解压:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
