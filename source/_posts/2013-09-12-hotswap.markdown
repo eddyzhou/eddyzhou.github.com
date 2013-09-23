@@ -3,7 +3,7 @@ layout: post
 title: "有状态服务器的热更新"
 date: 2013-09-12 21:47
 comments: true
-categories: hotswap, scala 
+categories: hotswap scala 
 ---
 
   这两天把服务器的热更新实现了下。对于无状态服务器要做热更新相对简单，如果数据在别的进程，简单粗暴的重启也是可行的，我个人也更倾向于这么做。在上一家公司，我们就常常重启AppServer，数据都在DataServer。甚至在做副本Server的时候，为了做到可随时重启，在停服的时候我把所有的组队数据和刷怪进度保存到了Memcached，重启的时候会先从Memcached读数据，从ProfileServer把玩家数据拉过来，恢复度队伍数据和刷怪进度，这样玩家会感觉到卡一下，但影响不大。现在我们的数据库VinyStorage虽然在架构上是独立的，但是物理上却是与业务逻辑同进程，这导致我们不能常常重启服务器(因为停服的时候VinyStorage把内存的数据写到磁盘可能需要较长时间)。而且我们在内存中维护了很多份房间数据，我们只希望热更新Services，而不去更新Models。所以我们不能用Tomcat等容器那样定时去检测指定目录的Class是否有修改的做法，当然我们是用scala写服务器，Nginx那样fork进程的做法更不可行.
