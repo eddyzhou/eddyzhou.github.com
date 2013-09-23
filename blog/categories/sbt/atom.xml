@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: sbt | EddyZhou's blog]]></title>
+  <link href="http://eddyzhou.github.io/blog/categories/sbt/atom.xml" rel="self"/>
+  <link href="http://eddyzhou.github.io/"/>
+  <updated>2013-09-24T00:40:16+08:00</updated>
+  <id>http://eddyzhou.github.io/</id>
+  <author>
+    <name><![CDATA[EddyZhou]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[上传速度优化]]></title>
+    <link href="http://eddyzhou.github.io/blog/2013/09/23/rsync/"/>
+    <updated>2013-09-23T23:52:00+08:00</updated>
+    <id>http://eddyzhou.github.io/blog/2013/09/23/rsync</id>
+    <content type="html"><![CDATA[<p>  上周把服务器和客户端都部署到了阿里云服务器，因为在频繁修改，每天需要发布很多次。客户端做了增量更新，除了第一次上传很慢，之后都很快。服务端是打成了一个jar，有40M左右，每次上传需要半个多小时，慢到实在是不能接受。周四晚上做了一下优化，现在每次上传只需要两三分钟。
+优化的核心思想是增量而不是全量上传，但是打成一个jar之后，rsync还是会全量上传，所以想直接上传class文件，然后在服务器上用jar打包，这样就可以增量上传了。看了下sbt assembly的选项，没看到有选项支持不打成jar。所以先在本地把jar解压:
+```
+rsync-aliyun-server: server/target/server-assembly-0.3.$(REVISION)-SNAPSHOT.jar server/target/server-assembly.jar</p>
+
+<pre><code>                 mkdir -p server/target/server-assembly
+                 cd server/target/server-assembly &amp;&amp; jar -xvf ../scala-2.10/server-assembly-0.3.$(REVISION)-SNAPSHOT.jar
+</code></pre>
+
+<p><code>
+然后把class文件上传服务器(增量上传)：
+</code>
+rsync &mdash;links -avz &mdash;no-whole-file server/target/server-assembly user@serverIp:/xxx/xxx/jars/
+<code>
+再在服务器上用jar命令打包:
+</code>
+ssh user@serverIp &lsquo;cd /xxx/xxx/jars &amp;&amp; jar cvf server-assembly-lastest-SNAPSHOT.jar server-assembly &amp;&amp; ln -s -f -T server-assembly-lastest-SNAPSHOT.jar server-assembly.jar&rsquo;
+```</p>
+]]></content>
+  </entry>
+  
+</feed>

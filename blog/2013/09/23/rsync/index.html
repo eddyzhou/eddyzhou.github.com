@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: scala - EddyZhou's blog</title>
+  <title>上传速度优化 - EddyZhou's blog</title>
   <meta name="author" content="EddyZhou">
 
   
-  <meta name="description" content="Category: scala">
+  <meta name="description" content="上周把服务器和客户端都部署到了阿里云服务器，因为在频繁修改，每天需要发布很多次。客户端做了增量更新，除了第一次上传很慢，之后都很快。服务端是打成了一个jar，有40M左右，每次上传需要半个多小时，慢到实在是不能接受。周四晚上做了一下优化，现在每次上传只需要两三分钟。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://eddyzhou.github.ioblog/categories/scala">
+  <link rel="canonical" href="http://eddyzhou.github.io/blog/2013/09/23/rsync">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="EddyZhou's blog" type="application/atom+xml">
@@ -64,49 +64,106 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">Category: Scala</h1>
+    
+      <h1 class="entry-title">上传速度优化</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-23T23:52:00+08:00" pubdate data-updated="true">Sep 23<span>rd</span>, 2013</time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+<div class="entry-content"><p>  上周把服务器和客户端都部署到了阿里云服务器，因为在频繁修改，每天需要发布很多次。客户端做了增量更新，除了第一次上传很慢，之后都很快。服务端是打成了一个jar，有40M左右，每次上传需要半个多小时，慢到实在是不能接受。周四晚上做了一下优化，现在每次上传只需要两三分钟。
+优化的核心思想是增量而不是全量上传，但是打成一个jar之后，rsync还是会全量上传，所以想直接上传class文件，然后在服务器上用jar打包，这样就可以增量上传了。看了下sbt assembly的选项，没看到有选项支持不打成jar。所以先在本地把jar解压:</p>
 
-  
-  <h2>2013</h2>
-
-<article>
-  
-<h1><a href="/blog/2013/09/12/hotswap/">有状态服务器的热更新</a></h1>
-<time datetime="2013-09-12T21:47:00+08:00" pubdate><span class='month'>Sep</span> <span class='day'>12</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/hotswap/'>hotswap</a>, <a class='category' href='/blog/categories/scala/'>scala</a></span>
-</footer>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rsync-aliyun-server: server/target/server-assembly-0.3.$(REVISION)-SNAPSHOT.jar server/target/server-assembly.jar
+</span><span class='line'>                     mkdir -p server/target/server-assembly
+</span><span class='line'>                     cd server/target/server-assembly && jar -xvf ../scala-2.10/server-assembly-0.3.$(REVISION)-SNAPSHOT.jar
+</span></code></pre></td></tr></table></div></figure>
 
 
-</article>
+<p>然后把class文件上传服务器(增量上传)：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rsync --links -avz --no-whole-file server/target/server-assembly user@serverIp:/xxx/xxx/jars/</span></code></pre></td></tr></table></div></figure>
 
 
+<p>再在服务器上用jar命令打包:</p>
 
-<article>
-  
-<h1><a href="/blog/2013/09/04/service-disable/">功能禁用的一点思考</a></h1>
-<time datetime="2013-09-04T21:35:00+08:00" pubdate><span class='month'>Sep</span> <span class='day'>04</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/macro/'>macro</a>, <a class='category' href='/blog/categories/scala/'>scala</a></span>
-</footer>
-
-
-</article>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh user@serverIp 'cd /xxx/xxx/jars && jar cvf server-assembly-lastest-SNAPSHOT.jar server-assembly && ln -s -f -T server-assembly-lastest-SNAPSHOT.jar server-assembly.jar'</span></code></pre></td></tr></table></div></figure>
 
 </div>
 
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">EddyZhou</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-23T23:52:00+08:00" pubdate data-updated="true">Sep 23<span>rd</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/rsync/'>rsync</a>, <a class='category' href='/blog/categories/sbt/'>sbt</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://eddyzhou.github.io/blog/2013/09/23/rsync/" data-via="" data-counturl="http://eddyzhou.github.io/blog/2013/09/23/rsync/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/09/12/hotswap/" title="Previous Post: 有状态服务器的热更新">&laquo; 有状态服务器的热更新</a>
+      
+      
+    </p>
+  </footer>
 </article>
 
 </div>
